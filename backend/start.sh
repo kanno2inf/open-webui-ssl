@@ -50,7 +50,7 @@ if [ -n "$SPACE_ID" ]; then
   echo "Configuring for HuggingFace Space deployment"
   if [ -n "$ADMIN_USER_EMAIL" ] && [ -n "$ADMIN_USER_PASSWORD" ]; then
     echo "Admin user configured, creating"
-    WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" uvicorn open_webui.main:app --host "$HOST" --port "$PORT" --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}" &
+    WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" uvicorn open_webui.main:app --host "$HOST" --port "$PORT" --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}" "${SSL_OPTION[@]}" &
     webui_pid=$!
     echo "Waiting for webui to start..."
     while ! curl -s "http://localhost:${PORT}/health" > /dev/null; do
@@ -79,9 +79,15 @@ else
     ARGS=(--workers "$UVICORN_WORKERS")
 fi
 
+SSL_OPTION=()
+if [ -n "$WEBUI_SSL_KEY" ] && [ -n "$WEBUI_SSL_CERT" ]; then
+  echo "SSL key and cert provided, configuring for HTTPS"
+  SSL_OPTION=("--ssl-keyfile" "$WEBUI_SSL_KEY" "--ssl-certfile" "$WEBUI_SSL_CERT")
+fi
+
 # Run uvicorn
 WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" exec "$PYTHON_CMD" -m uvicorn open_webui.main:app \
     --host "$HOST" \
     --port "$PORT" \
     --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}" \
-    "${ARGS[@]}"
+    "${ARGS[@]}" "${SSL_OPTION[@]}"
